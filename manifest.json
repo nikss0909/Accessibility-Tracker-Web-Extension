@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Accessibility Tracker (React)",
+  "version": "1.0",
+  "description": "Scan and auto-enhance pages for basic accessibility issues.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
