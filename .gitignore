@@ -1,4 +1,9 @@
+# dependencies
 node_modules/
+
+# production build
 dist/
-build/
+
+# misc
 .env
+.DS_Store
