@@ -1,55 +1,149 @@
+/* THEME VARIABLES */
+:root {
+  --bg: #020617;
+  --card: #020617;
+  --border: #1e293b;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #3b82f6;
+  --success-bg: rgba(34, 197, 94, 0.15);
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #020617;
+  --muted: #475569;
+  --accent: #2563eb;
+  --success-bg: rgba(34, 197, 94, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
   font-family: system-ui, sans-serif;
 }
 
-.container {
-  width: 320px;
-  padding: 14px;
-  background: #f8fafc;
-  color: #0f172a;
+/* APP */
+.app {
+  width: 340px;
+  min-height: 460px;
+  padding: 16px;
 }
 
+/* HEADER */
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .header h1 {
-  font-size: 16px;
+  font-size: 18px;
   margin: 0;
 }
 
-.theme-btn {
+.header p {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.theme-toggle {
   border: none;
   background: transparent;
   font-size: 18px;
   cursor: pointer;
 }
 
+/* SCAN BUTTON */
 .scan-btn {
   width: 100%;
-  margin: 12px 0;
-  padding: 10px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 8px;
+  margin: 16px 0;
+  padding: 12px;
   font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), #60a5fa);
+  color: white;
   cursor: pointer;
 }
 
-.scan-btn:hover {
-  background: #1d4ed8;
-}
-
-.results h2 {
+/* RESULTS */
+.results h2,
+.enhance h2 {
   font-size: 14px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.results ul {
-  padding-left: 18px;
+.empty {
+  background: var(--success-bg);
+  color: #22c55e;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
   font-size: 13px;
+}
+
+/* ISSUES */
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.issue-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+}
+
+/* ENHANCE SECTION */
+.enhance {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.enhance ul {
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.enhance-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
 }
