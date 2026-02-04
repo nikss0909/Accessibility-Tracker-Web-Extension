@@ -130,20 +130,65 @@ body {
   border: 1px solid var(--border);
 }
 
-.enhance ul {
-  padding-left: 18px;
-  font-size: 12px;
-  color: var(--muted);
+
+.badge.high {
+  background: #dc2626;
 }
 
-.enhance-btn {
-  margin-top: 10px;
-  width: 100%;
+.badge.medium {
+  background: #f59e0b;
+}
+
+.badge.low {
+  background: #16a34a;
+}
+.count {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.issue-card.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.issue-card.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.count {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.score {
+  margin: 8px 0 12px;
   padding: 10px;
   border-radius: 10px;
-  border: 1px dashed var(--accent);
-  background: transparent;
-  color: var(--accent);
-  font-size: 13px;
-  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.15);
 }
+
+.count {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.fix-suggestions {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.fix-suggestions h2 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.fix-suggestions ul {
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
