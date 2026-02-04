@@ -8,20 +8,6 @@ function Popup() {
   const [theme, setTheme] = useState("dark");
   const [score, setScore] = useState(null);
 
-  /* WCAG descriptions + fix suggestions */
-  const wcagHelp = {
-    "WCAG 1.1.1": {
-      desc: "Images must have meaningful alternative text for screen readers.",
-      fix: "Add an alt attribute that describes the purpose of the image.",
-    },
-    "WCAG 4.1.2": {
-      desc:
-        "Interactive elements must have accessible names for assistive technologies.",
-      fix:
-        "Add visible text or use aria-label to describe the button action.",
-    },
-  };
-
   /* Load saved theme */
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -38,10 +24,9 @@ function Popup() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  /* Score: 10 - grouped issues */
+  /* Score = 10 - number of grouped issues */
   const calculateScore = (issues) => {
-    const score = 10 - issues.length;
-    return Math.max(score, 0);
+    return Math.max(10 - issues.length, 0);
   };
 
   const scanPage = () => {
@@ -60,6 +45,7 @@ function Popup() {
             return;
           }
 
+          // Group issues by WCAG rule + message
           const grouped = {};
           (response?.issues || []).forEach((issue) => {
             const key = `${issue.rule}-${issue.message}`;
@@ -95,6 +81,7 @@ function Popup() {
           <h1>Accessibility Tracker</h1>
           <p>WCAG quick audit for current page</p>
         </div>
+
         <button className="theme-toggle" onClick={toggleTheme}>
           {theme === "dark" ? "☀️" : "🌙"}
         </button>
@@ -105,59 +92,45 @@ function Popup() {
         {loading ? "Scanning..." : "Scan Page"}
       </button>
 
-      {/* RESULTS */}
-      <section className="results">
-        <h2>Issues Found</h2>
+      {/* RESULTS — show only after scan */}
+      {scanned && (
+        <section className="results">
+          <h2>Issues Found</h2>
 
-        {score !== null && (
-          <div className="score">
-            Accessibility Score: <strong>{score}/10</strong>
-          </div>
-        )}
-
-        {scanned && !loading && issues.length === 0 && (
-          <div className="empty">🎉 No issues detected</div>
-        )}
-
-        <div className="issues-list">
-          {issues.map((issue, index) => (
-            <div
-              key={index}
-              className="issue-card clickable"
-              onClick={() => highlightIssue(issue.selector)}
-              title={wcagHelp[issue.rule]?.desc}
-            >
-              <span className={`badge ${issue.severity.toLowerCase()}`}>
-                {issue.severity}
-              </span>
-
-              <p>
-                <strong>{issue.rule}</strong> — {issue.message}
-                {issue.count > 1 && (
-                  <span className="count">
-                    {" "}
-                    ({issue.count} occurrences)
-                  </span>
-                )}
-              </p>
+          {score !== null && (
+            <div className="score">
+              Accessibility Score: <strong>{score}/10</strong>
             </div>
-          ))}
-        </div>
-      </section>
+          )}
 
-      {/* FIX SUGGESTIONS */}
-      {issues.length > 0 && (
-        <section className="fix-suggestions">
-          <h2>🛠️ Fixing Issue Suggestions</h2>
-          <ul>
+          {!loading && issues.length === 0 && (
+            <div className="empty">🎉 No issues detected</div>
+          )}
+
+          <div className="issues-list">
             {issues.map((issue, index) => (
-              <li key={index}>
-                <strong>{issue.rule}:</strong>{" "}
-                {wcagHelp[issue.rule]?.fix ||
-                  "Follow WCAG guidelines to resolve this issue."}
-              </li>
+              <div
+                key={index}
+                className="issue-card clickable"
+                onClick={() => highlightIssue(issue.selector)}
+                title="Click to highlight element on page"
+              >
+                <span className={`badge ${issue.severity.toLowerCase()}`}>
+                  {issue.severity}
+                </span>
+
+                <p>
+                  <strong>{issue.rule}</strong> — {issue.message}
+                  {issue.count > 1 && (
+                    <span className="count">
+                      {" "}
+                      ({issue.count} occurrences)
+                    </span>
+                  )}
+                </p>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
     </div>

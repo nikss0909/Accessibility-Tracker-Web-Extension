@@ -1,4 +1,15 @@
 /* THEME VARIABLES */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 340px;
+  height: auto;
+  min-height: unset !important;
+  max-height: none !important;
+  overflow: hidden;
+}
+
 :root {
   --bg: #020617;
   --card: #020617;
@@ -32,10 +43,12 @@ body {
 
 /* APP */
 .app {
-  width: 340px;
-  min-height: 460px;
+  width: 100%;
   padding: 16px;
+  height: auto;
+  min-height: unset;
 }
+
 
 /* HEADER */
 .header {
