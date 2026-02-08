@@ -20,6 +20,20 @@ function scanAccessibility(sendResponse) {
   });
 
   /* =========================
+     WCAG 1.1.1 – Decorative images
+     ========================= */
+  document.querySelectorAll("img[alt='']").forEach((img) => {
+    if (!img.hasAttribute("role")) {
+      issues.push({
+        rule: "WCAG 1.1.1",
+        message: "Decorative image missing role='presentation'",
+        severity: "Low",
+        selector: getUniqueSelector(img),
+      });
+    }
+  });
+
+  /* =========================
      WCAG 4.1.2 – Button label
      ========================= */
   document.querySelectorAll("button").forEach((btn) => {
@@ -91,10 +105,93 @@ function scanAccessibility(sendResponse) {
     }
   });
 
-  sendResponse({ issues });
+  /* =========================
+     WCAG 1.3.1 – Page language
+     ========================= */
+  if (!document.documentElement.hasAttribute("lang")) {
+    issues.push({
+      rule: "WCAG 1.3.1",
+      message: "Page is missing language attribute",
+      severity: "Medium",
+      selector: "html",
+    });
+  }
+
+  /* =========================
+     WCAG 2.4.1 – Page title
+     ========================= */
+  if (!document.title || document.title.trim() === "") {
+    issues.push({
+      rule: "WCAG 2.4.1",
+      message: "Page title is missing or empty",
+      severity: "Medium",
+      selector: "title",
+    });
+  }
+
+  /* =========================
+     WCAG 4.1.1 – Duplicate IDs
+     ========================= */
+  const ids = {};
+  document.querySelectorAll("[id]").forEach((el) => {
+    const id = el.id;
+    if (ids[id]) {
+      issues.push({
+        rule: "WCAG 4.1.1",
+        message: "Duplicate ID found on page",
+        severity: "High",
+        selector: `#${id}`,
+      });
+    } else {
+      ids[id] = true;
+    }
+  });
+
+  /* =========================
+     WCAG 2.4.6 – Headings
+     ========================= */
+  if (document.querySelectorAll("h1,h2,h3,h4,h5,h6").length === 0) {
+    issues.push({
+      rule: "WCAG 2.4.6",
+      message: "Page has no heading structure",
+      severity: "Low",
+      selector: "body",
+    });
+  }
+
+  /* =========================
+     WCAG 1.4.3 – Low contrast (basic)
+     ========================= */
+  document.querySelectorAll("p, span, label").forEach((el) => {
+    const style = window.getComputedStyle(el);
+    if (
+      style.color === style.backgroundColor &&
+      style.color !== "rgba(0, 0, 0, 0)"
+    ) {
+      issues.push({
+        rule: "WCAG 1.4.3",
+        message: "Text may have insufficient color contrast",
+        severity: "Low",
+        selector: getUniqueSelector(el),
+      });
+    }
+  });
+
+  /* =========================
+     Severity Summary
+     ========================= */
+  const summary = {
+    high: issues.filter((i) => i.severity === "High").length,
+    medium: issues.filter((i) => i.severity === "Medium").length,
+    low: issues.filter((i) => i.severity === "Low").length,
+  };
+
+  sendResponse({ issues, summary });
 }
 
-/*Highlight element on page */
+/* =========================
+   Highlight element on page
+   ========================= */
 function highlightElement(selector) {
   try {
     const el = document.querySelector(selector);
@@ -102,7 +199,6 @@ function highlightElement(selector) {
 
     el.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    // Remove previous highlight
     const old = document.getElementById("__accessibility_highlight__");
     if (old) old.remove();
 
@@ -137,11 +233,9 @@ function getUniqueSelector(el) {
   let path = [];
   while (el && el.nodeType === Node.ELEMENT_NODE) {
     let selector = el.nodeName.toLowerCase();
-
     if (el.className) {
       selector += "." + [...el.classList].join(".");
     }
-
     path.unshift(selector);
     el = el.parentElement;
   }
@@ -154,7 +248,7 @@ function getUniqueSelector(el) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "scanAccessibility") {
     scanAccessibility(sendResponse);
-    return true; // async response
+    return true;
   }
 
   if (request.action === "highlightIssue") {

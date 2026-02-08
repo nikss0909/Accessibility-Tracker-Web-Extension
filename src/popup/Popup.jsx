@@ -24,11 +24,12 @@ function Popup() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  /* Score = 10 - number of grouped issues */
+  /* Accessibility score = 10 - grouped issues */
   const calculateScore = (issues) => {
     return Math.max(10 - issues.length, 0);
   };
 
+  /* Scan page */
   const scanPage = () => {
     setLoading(true);
     setScanned(true);
@@ -45,7 +46,6 @@ function Popup() {
             return;
           }
 
-          // Group issues by WCAG rule + message
           const grouped = {};
           (response?.issues || []).forEach((issue) => {
             const key = `${issue.rule}-${issue.message}`;
@@ -64,6 +64,7 @@ function Popup() {
     });
   };
 
+  /* Highlight element */
   const highlightIssue = (selector) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, {
@@ -71,6 +72,42 @@ function Popup() {
         selector,
       });
     });
+  };
+
+  /* ✅ REPORT TO DEVELOPER (BACKEND) */
+  const reportToDeveloper = async () => {
+    const report = {
+      scannedUrl: window.location.href,
+      scannedAt: new Date().toISOString(),
+      accessibilityScore: score,
+      totalIssueTypes: issues.length,
+      issues: issues.map((issue) => ({
+        rule: issue.rule,
+        message: issue.message,
+        severity: issue.severity,
+        occurrences: issue.count,
+        selector: issue.selector,
+      })),
+    };
+
+    try {
+      const res = await fetch("http://localhost:5000/api/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(report),
+      });
+
+      if (res.ok) {
+        alert("✅ Issues successfully reported to developer");
+      } else {
+        alert("❌ Failed to report issues");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Backend not reachable");
+    }
   };
 
   return (
@@ -92,7 +129,7 @@ function Popup() {
         {loading ? "Scanning..." : "Scan Page"}
       </button>
 
-      {/* RESULTS — show only after scan */}
+      {/* RESULTS */}
       {scanned && (
         <section className="results">
           <h2>Issues Found</h2>
@@ -113,7 +150,6 @@ function Popup() {
                 key={index}
                 className="issue-card clickable"
                 onClick={() => highlightIssue(issue.selector)}
-                title="Click to highlight element on page"
               >
                 <span className={`badge ${issue.severity.toLowerCase()}`}>
                   {issue.severity}
@@ -131,6 +167,16 @@ function Popup() {
               </div>
             ))}
           </div>
+
+          {issues.length > 0 && (
+            <button
+              className="scan-btn"
+              style={{ marginTop: "12px" }}
+              onClick={reportToDeveloper}
+            >
+              📤 Report Issues to Developer
+            </button>
+          )}
         </section>
       )}
     </div>

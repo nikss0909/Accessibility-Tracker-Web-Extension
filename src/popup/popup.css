@@ -1,15 +1,22 @@
-/* THEME VARIABLES */
+/* =========================
+   BASE / POPUP FIXES
+========================= */
 html,
 body {
   margin: 0;
   padding: 0;
   width: 340px;
   height: auto;
-  min-height: unset !important;
-  max-height: none !important;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+/* =========================
+   THEME VARIABLES
+========================= */
 :root {
   --bg: #020617;
   --card: #020617;
@@ -30,27 +37,23 @@ body {
   --success-bg: rgba(34, 197, 94, 0.15);
 }
 
-* {
-  box-sizing: border-box;
-}
-
+/* =========================
+   BODY / APP
+========================= */
 body {
-  margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, sans-serif;
 }
 
-/* APP */
 .app {
   width: 100%;
   padding: 16px;
-  height: auto;
-  min-height: unset;
 }
 
-
-/* HEADER */
+/* =========================
+   HEADER
+========================= */
 .header {
   display: flex;
   justify-content: space-between;
@@ -75,7 +78,9 @@ body {
   cursor: pointer;
 }
 
-/* SCAN BUTTON */
+/* =========================
+   BUTTONS
+========================= */
 .scan-btn {
   width: 100%;
   margin: 16px 0;
@@ -89,13 +94,30 @@ body {
   cursor: pointer;
 }
 
-/* RESULTS */
-.results h2,
-.enhance h2 {
+.scan-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* =========================
+   RESULTS SECTION
+========================= */
+.results h2 {
   font-size: 14px;
   margin-bottom: 8px;
 }
 
+/* Score */
+.score {
+  margin: 8px 0 12px;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Empty state */
 .empty {
   background: var(--success-bg);
   color: #22c55e;
@@ -105,13 +127,16 @@ body {
   font-size: 13px;
 }
 
-/* ISSUES */
+/* =========================
+   ISSUES LIST
+========================= */
 .issues-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
+  margin-bottom: 12px;
 }
 
 .issue-card {
@@ -123,6 +148,18 @@ body {
   position: relative;
 }
 
+/* Clickable animation */
+.issue-card.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.issue-card.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* Severity badge */
 .badge {
   position: absolute;
   top: 8px;
@@ -130,19 +167,8 @@ body {
   font-size: 10px;
   padding: 3px 6px;
   border-radius: 999px;
-  background: #dc2626;
   color: white;
 }
-
-/* ENHANCE SECTION */
-.enhance {
-  margin-top: 16px;
-  padding: 12px;
-  border-radius: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-}
-
 
 .badge.high {
   background: #dc2626;
@@ -155,53 +181,9 @@ body {
 .badge.low {
   background: #16a34a;
 }
+
+/* Occurrence count */
 .count {
   opacity: 0.6;
   font-size: 12px;
 }
-.issue-card.clickable {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.issue-card.clickable:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
-}
-
-.count {
-  opacity: 0.6;
-  font-size: 12px;
-}
-.score {
-  margin: 8px 0 12px;
-  padding: 10px;
-  border-radius: 10px;
-  text-align: center;
-  font-weight: 600;
-  background: rgba(59, 130, 246, 0.15);
-}
-
-.count {
-  opacity: 0.6;
-  font-size: 12px;
-}
-.fix-suggestions {
-  margin-top: 16px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(100, 116, 139, 0.12);
-}
-
-.fix-suggestions h2 {
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.fix-suggestions ul {
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-
