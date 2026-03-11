@@ -1,41 +1,32 @@
-// ===============================
-// Accessibility Scanner (content.js)
-// ===============================
+// Pulse animation style
+const style = document.createElement("style");
 
+style.textContent = `
+@keyframes accessPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(255,0,0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
+}
+`;
+
+document.head.appendChild(style);
 function scanAccessibility(sendResponse) {
   const issues = [];
 
-  /* =========================
-     WCAG 1.1.1 – Image alt text
-     ========================= */
+  /* WCAG 1.1.1 – Image alt text */
   document.querySelectorAll("img").forEach((img) => {
-    if (!img.hasAttribute("alt") || img.getAttribute("alt").trim() === "") {
+    const alt = img.getAttribute("alt");
+    if (!alt || alt.trim() === "") {
       issues.push({
         rule: "WCAG 1.1.1",
-        message: "Image missing alt attribute",
+        message: "Image missing alternative text",
         severity: "High",
         selector: getUniqueSelector(img),
       });
     }
   });
 
-  /* =========================
-     WCAG 1.1.1 – Decorative images
-     ========================= */
-  document.querySelectorAll("img[alt='']").forEach((img) => {
-    if (!img.hasAttribute("role")) {
-      issues.push({
-        rule: "WCAG 1.1.1",
-        message: "Decorative image missing role='presentation'",
-        severity: "Low",
-        selector: getUniqueSelector(img),
-      });
-    }
-  });
-
-  /* =========================
-     WCAG 4.1.2 – Button label
-     ========================= */
+  /* WCAG 4.1.2 – Button label */
   document.querySelectorAll("button").forEach((btn) => {
     if (
       !btn.innerText.trim() &&
@@ -51,11 +42,10 @@ function scanAccessibility(sendResponse) {
     }
   });
 
-  /* =========================
-     WCAG 3.3.2 – Input label
-     ========================= */
+  /* WCAG 3.3.2 – Input label */
   document.querySelectorAll("input, textarea, select").forEach((input) => {
     const id = input.getAttribute("id");
+
     const hasLabel =
       (id && document.querySelector(`label[for="${id}"]`)) ||
       input.getAttribute("aria-label") ||
@@ -71,13 +61,13 @@ function scanAccessibility(sendResponse) {
     }
   });
 
-  /* =========================
-     WCAG 2.4.4 – Link purpose
-     ========================= */
-  const badLinkText = ["click here", "read more", "more"];
+  /* WCAG 2.4.4 – Link text */
+  const badLinks = ["click here", "read more", "more"];
+
   document.querySelectorAll("a").forEach((link) => {
     const text = link.innerText.trim().toLowerCase();
-    if (badLinkText.includes(text)) {
+
+    if (badLinks.includes(text)) {
       issues.push({
         rule: "WCAG 2.4.4",
         message: "Link text is not descriptive",
@@ -87,9 +77,7 @@ function scanAccessibility(sendResponse) {
     }
   });
 
-  /* =========================
-     WCAG 2.1.1 – Keyboard access
-     ========================= */
+  /* WCAG 2.1.1 – Keyboard accessibility */
   document.querySelectorAll("[onclick]").forEach((el) => {
     if (
       el.tagName !== "BUTTON" &&
@@ -98,88 +86,59 @@ function scanAccessibility(sendResponse) {
     ) {
       issues.push({
         rule: "WCAG 2.1.1",
-        message: "Clickable element is not keyboard accessible",
+        message: "Clickable element not keyboard accessible",
         severity: "Medium",
         selector: getUniqueSelector(el),
       });
     }
   });
 
-  /* =========================
-     WCAG 1.3.1 – Page language
-     ========================= */
+  /* WCAG 3.1.1 – Page language */
   if (!document.documentElement.hasAttribute("lang")) {
     issues.push({
-      rule: "WCAG 1.3.1",
-      message: "Page is missing language attribute",
-      severity: "Medium",
+      rule: "WCAG 3.1.1",
+      message: "Page missing language attribute",
+      severity: "Low",
       selector: "html",
     });
   }
 
-  /* =========================
-     WCAG 2.4.1 – Page title
-     ========================= */
-  if (!document.title || document.title.trim() === "") {
-    issues.push({
-      rule: "WCAG 2.4.1",
-      message: "Page title is missing or empty",
-      severity: "Medium",
-      selector: "title",
-    });
-  }
-
-  /* =========================
-     WCAG 4.1.1 – Duplicate IDs
-     ========================= */
-  const ids = {};
-  document.querySelectorAll("[id]").forEach((el) => {
-    const id = el.id;
-    if (ids[id]) {
-      issues.push({
-        rule: "WCAG 4.1.1",
-        message: "Duplicate ID found on page",
-        severity: "High",
-        selector: `#${id}`,
-      });
-    } else {
-      ids[id] = true;
-    }
-  });
-
-  /* =========================
-     WCAG 2.4.6 – Headings
-     ========================= */
-  if (document.querySelectorAll("h1,h2,h3,h4,h5,h6").length === 0) {
-    issues.push({
-      rule: "WCAG 2.4.6",
-      message: "Page has no heading structure",
-      severity: "Low",
-      selector: "body",
-    });
-  }
-
-  /* =========================
-     WCAG 1.4.3 – Low contrast (basic)
-     ========================= */
-  document.querySelectorAll("p, span, label").forEach((el) => {
+  /* WCAG 2.4.7 – Focus visible */
+  document.querySelectorAll("button, a, input").forEach((el) => {
     const style = window.getComputedStyle(el);
-    if (
-      style.color === style.backgroundColor &&
-      style.color !== "rgba(0, 0, 0, 0)"
-    ) {
+
+    if (style.outline === "none") {
       issues.push({
-        rule: "WCAG 1.4.3",
-        message: "Text may have insufficient color contrast",
-        severity: "Low",
+        rule: "WCAG 2.4.7",
+        message: "Focus indicator may not be visible",
+        severity: "Medium",
         selector: getUniqueSelector(el),
       });
     }
   });
 
-  /* =========================
-     Severity Summary
-     ========================= */
+  /* WCAG 2.4.2 – Page title */
+  if (!document.title || document.title.trim().length < 3) {
+    issues.push({
+      rule: "WCAG 2.4.2",
+      message: "Page title missing or not descriptive",
+      severity: "Medium",
+      selector: "title",
+    });
+  }
+
+  /* WCAG 1.3.1 – Table headers */
+  document.querySelectorAll("table").forEach((table) => {
+    if (!table.querySelector("th")) {
+      issues.push({
+        rule: "WCAG 1.3.1",
+        message: "Table may be missing header cells",
+        severity: "Medium",
+        selector: getUniqueSelector(table),
+      });
+    }
+  });
+
   const summary = {
     high: issues.filter((i) => i.severity === "High").length,
     medium: issues.filter((i) => i.severity === "Medium").length,
@@ -189,69 +148,84 @@ function scanAccessibility(sendResponse) {
   sendResponse({ issues, summary });
 }
 
-/* =========================
-   Highlight element on page
-   ========================= */
-function highlightElement(selector) {
-  try {
-    const el = document.querySelector(selector);
-    if (!el) return;
+//////////////////////////////////////////////////////
+function highlightElement(selector, rule) {
 
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  const el = document.querySelector(selector);
+  if (!el) return;
 
-    const old = document.getElementById("__accessibility_highlight__");
-    if (old) old.remove();
+  el.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
 
-    const rect = el.getBoundingClientRect();
-    const highlight = document.createElement("div");
-    highlight.id = "__accessibility_highlight__";
+  const old = document.getElementById("__accessibility_highlight__");
+  if (old) old.remove();
 
-    highlight.style.position = "fixed";
-    highlight.style.top = rect.top - 6 + "px";
-    highlight.style.left = rect.left - 6 + "px";
-    highlight.style.width = rect.width + 12 + "px";
-    highlight.style.height = rect.height + 12 + "px";
-    highlight.style.border = "3px solid red";
-    highlight.style.borderRadius = "8px";
-    highlight.style.zIndex = "999999";
-    highlight.style.pointerEvents = "none";
-    highlight.style.boxShadow = "0 0 0 9999px rgba(0,0,0,0.25)";
+  const rect = el.getBoundingClientRect();
+  const highlight = document.createElement("div");
+  highlight.id = "__accessibility_highlight__";
 
-    document.body.appendChild(highlight);
-    setTimeout(() => highlight.remove(), 3000);
-  } catch (err) {
-    console.error("Highlight error:", err);
-  }
+  let color = "orange";
+
+  if (rule === "WCAG 1.1.1") color = "#ff3b30";
+  else if (rule === "WCAG 4.1.2") color = "#ff9500";
+  else if (rule === "WCAG 3.3.2") color = "#007aff";
+  else if (rule === "WCAG 2.4.4") color = "#af52de";
+  else if (rule === "WCAG 2.1.1") color = "#ffd60a";
+  else if (rule === "WCAG 1.3.1") color = "#34c759";
+
+  highlight.style.position = "fixed";
+  highlight.style.top = rect.top - 6 + "px";
+  highlight.style.left = rect.left - 6 + "px";
+  highlight.style.width = rect.width + 12 + "px";
+  highlight.style.height = rect.height + 12 + "px";
+
+  highlight.style.border = `3px solid ${color}`;
+  highlight.style.borderRadius = "10px";
+  highlight.style.zIndex = "999999";
+  highlight.style.pointerEvents = "none";
+
+  highlight.style.animation = "accessPulse 1.2s infinite";
+
+  document.body.appendChild(highlight);
+
+  setTimeout(() => {
+    highlight.remove();
+  }, 4000);
 }
 
-/* =========================
-   Helper: unique selector
-   ========================= */
+//////////////////////////////////////////////////////
+
 function getUniqueSelector(el) {
   if (el.id) return `#${el.id}`;
 
   let path = [];
+
   while (el && el.nodeType === Node.ELEMENT_NODE) {
     let selector = el.nodeName.toLowerCase();
+
     if (el.className) {
       selector += "." + [...el.classList].join(".");
     }
+
     path.unshift(selector);
     el = el.parentElement;
   }
+
   return path.join(" > ");
 }
 
-/* =========================
-   Message Listener
-   ========================= */
+//////////////////////////////////////////////////////
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+
   if (request.action === "scanAccessibility") {
     scanAccessibility(sendResponse);
-    return true;
+    return true; 
   }
 
   if (request.action === "highlightIssue") {
-    highlightElement(request.selector);
+    highlightElement(request.selector, request.rule);
   }
+
 });

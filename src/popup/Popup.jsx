@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./popup.css";
 
 function Popup() {
+
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -24,94 +25,99 @@ function Popup() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  /* Accessibility score = 10 - grouped issues */
+  /* Accessibility score */
   const calculateScore = (issues) => {
     return Math.max(10 - issues.length, 0);
   };
 
+  /* Handle scan results */
+  const handleResponse = (response) => {
+
+    setLoading(false);
+
+    const grouped = {};
+
+    (response?.issues || []).forEach((issue) => {
+
+      const key = `${issue.rule}-${issue.message}`;
+
+      if (!grouped[key]) {
+        grouped[key] = { ...issue, count: 1 };
+      } else {
+        grouped[key].count += 1;
+      }
+
+    });
+
+    const finalIssues = Object.values(grouped);
+
+    setIssues(finalIssues);
+    setScore(calculateScore(finalIssues));
+
+  };
+
   /* Scan page */
   const scanPage = () => {
+
     setLoading(true);
     setScanned(true);
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+
+      const tabId = tabs[0].id;
+
       chrome.tabs.sendMessage(
-        tabs[0].id,
+        tabId,
         { action: "scanAccessibility" },
         (response) => {
-          setLoading(false);
 
           if (chrome.runtime.lastError) {
-            alert("Reload the page and try again");
+
+            /* Inject content script if missing */
+            chrome.scripting.executeScript({
+              target: { tabId: tabId },
+              files: ["content.js"]
+            }, () => {
+
+              /* Retry scan */
+              chrome.tabs.sendMessage(
+                tabId,
+                { action: "scanAccessibility" },
+                handleResponse
+              );
+
+            });
+
             return;
           }
 
-          const grouped = {};
-          (response?.issues || []).forEach((issue) => {
-            const key = `${issue.rule}-${issue.message}`;
-            if (!grouped[key]) {
-              grouped[key] = { ...issue, count: 1 };
-            } else {
-              grouped[key].count += 1;
-            }
-          });
+          handleResponse(response);
 
-          const finalIssues = Object.values(grouped);
-          setIssues(finalIssues);
-          setScore(calculateScore(finalIssues));
         }
       );
+
     });
+
   };
 
   /* Highlight element */
-  const highlightIssue = (selector) => {
+  const highlightIssue = (selector, rule) => {
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+
       chrome.tabs.sendMessage(tabs[0].id, {
         action: "highlightIssue",
-        selector,
+        selector: selector,
+        rule: rule
       });
+
     });
-  };
 
-  /* ✅ REPORT TO DEVELOPER (BACKEND) */
-  const reportToDeveloper = async () => {
-    const report = {
-      scannedUrl: window.location.href,
-      scannedAt: new Date().toISOString(),
-      accessibilityScore: score,
-      totalIssueTypes: issues.length,
-      issues: issues.map((issue) => ({
-        rule: issue.rule,
-        message: issue.message,
-        severity: issue.severity,
-        occurrences: issue.count,
-        selector: issue.selector,
-      })),
-    };
-
-    try {
-      const res = await fetch("http://localhost:5000/api/report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(report),
-      });
-
-      if (res.ok) {
-        alert("✅ Issues successfully reported to developer");
-      } else {
-        alert("❌ Failed to report issues");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("❌ Backend not reachable");
-    }
   };
 
   return (
     <div className="app">
+
       {/* HEADER */}
       <header className="header">
         <div>
@@ -131,7 +137,9 @@ function Popup() {
 
       {/* RESULTS */}
       {scanned && (
+
         <section className="results">
+
           <h2>Issues Found</h2>
 
           {score !== null && (
@@ -145,40 +153,40 @@ function Popup() {
           )}
 
           <div className="issues-list">
+
             {issues.map((issue, index) => (
+
               <div
                 key={index}
                 className="issue-card clickable"
-                onClick={() => highlightIssue(issue.selector)}
+                onClick={() => highlightIssue(issue.selector, issue.rule)}
               >
+
                 <span className={`badge ${issue.severity.toLowerCase()}`}>
                   {issue.severity}
                 </span>
 
                 <p>
                   <strong>{issue.rule}</strong> — {issue.message}
+
                   {issue.count > 1 && (
                     <span className="count">
-                      {" "}
-                      ({issue.count} occurrences)
+                      {" "}({issue.count} occurrences)
                     </span>
                   )}
+
                 </p>
+
               </div>
+
             ))}
+
           </div>
 
-          {issues.length > 0 && (
-            <button
-              className="scan-btn"
-              style={{ marginTop: "12px" }}
-              onClick={reportToDeveloper}
-            >
-              📤 Report Issues to Developer
-            </button>
-          )}
         </section>
+
       )}
+
     </div>
   );
 }
