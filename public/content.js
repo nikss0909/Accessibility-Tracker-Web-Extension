@@ -10,18 +10,58 @@ style.textContent = `
 `;
 
 document.head.appendChild(style);
+
+//////////////////////////////////////////////////////
+// ✅ Suggestion Function
+function getSuggestion(rule) {
+
+  if (rule === "WCAG 1.1.1")
+    return "Add meaningful alt text to the image.";
+
+  if (rule === "WCAG 4.1.2")
+    return "Provide an accessible label using aria-label or visible text.";
+
+  if (rule === "WCAG 3.3.2")
+    return "Associate input fields with a label element.";
+
+  if (rule === "WCAG 2.4.4")
+    return "Use descriptive link text instead of 'click here'.";
+
+  if (rule === "WCAG 2.1.1")
+    return "Ensure element is keyboard accessible using tabindex.";
+
+  if (rule === "WCAG 3.1.1")
+    return "Add lang attribute to the HTML tag.";
+
+  if (rule === "WCAG 2.4.7")
+    return "Ensure visible focus outline for interactive elements.";
+
+  if (rule === "WCAG 2.4.2")
+    return "Provide a meaningful page title.";
+
+  if (rule === "WCAG 1.3.1")
+    return "Use proper table headers with <th>.";
+
+  return "Follow WCAG accessibility guidelines.";
+}
+
+//////////////////////////////////////////////////////
+
 function scanAccessibility(sendResponse) {
+
   const issues = [];
 
   /* WCAG 1.1.1 – Image alt text */
   document.querySelectorAll("img").forEach((img) => {
     const alt = img.getAttribute("alt");
+
     if (!alt || alt.trim() === "") {
       issues.push({
         rule: "WCAG 1.1.1",
         message: "Image missing alternative text",
         severity: "High",
         selector: getUniqueSelector(img),
+        suggestion: getSuggestion("WCAG 1.1.1")
       });
     }
   });
@@ -38,6 +78,7 @@ function scanAccessibility(sendResponse) {
         message: "Button missing accessible label",
         severity: "High",
         selector: getUniqueSelector(btn),
+        suggestion: getSuggestion("WCAG 4.1.2")
       });
     }
   });
@@ -57,6 +98,7 @@ function scanAccessibility(sendResponse) {
         message: "Form input missing label",
         severity: "Medium",
         selector: getUniqueSelector(input),
+        suggestion: getSuggestion("WCAG 3.3.2")
       });
     }
   });
@@ -73,6 +115,7 @@ function scanAccessibility(sendResponse) {
         message: "Link text is not descriptive",
         severity: "Medium",
         selector: getUniqueSelector(link),
+        suggestion: getSuggestion("WCAG 2.4.4")
       });
     }
   });
@@ -89,6 +132,7 @@ function scanAccessibility(sendResponse) {
         message: "Clickable element not keyboard accessible",
         severity: "Medium",
         selector: getUniqueSelector(el),
+        suggestion: getSuggestion("WCAG 2.1.1")
       });
     }
   });
@@ -100,6 +144,7 @@ function scanAccessibility(sendResponse) {
       message: "Page missing language attribute",
       severity: "Low",
       selector: "html",
+      suggestion: getSuggestion("WCAG 3.1.1")
     });
   }
 
@@ -113,6 +158,7 @@ function scanAccessibility(sendResponse) {
         message: "Focus indicator may not be visible",
         severity: "Medium",
         selector: getUniqueSelector(el),
+        suggestion: getSuggestion("WCAG 2.4.7")
       });
     }
   });
@@ -124,6 +170,7 @@ function scanAccessibility(sendResponse) {
       message: "Page title missing or not descriptive",
       severity: "Medium",
       selector: "title",
+      suggestion: getSuggestion("WCAG 2.4.2")
     });
   }
 
@@ -135,6 +182,7 @@ function scanAccessibility(sendResponse) {
         message: "Table may be missing header cells",
         severity: "Medium",
         selector: getUniqueSelector(table),
+        suggestion: getSuggestion("WCAG 1.3.1")
       });
     }
   });
@@ -149,6 +197,7 @@ function scanAccessibility(sendResponse) {
 }
 
 //////////////////////////////////////////////////////
+
 function highlightElement(selector, rule) {
 
   const el = document.querySelector(selector);
@@ -185,7 +234,6 @@ function highlightElement(selector, rule) {
   highlight.style.borderRadius = "10px";
   highlight.style.zIndex = "999999";
   highlight.style.pointerEvents = "none";
-
   highlight.style.animation = "accessPulse 1.2s infinite";
 
   document.body.appendChild(highlight);
@@ -217,11 +265,12 @@ function getUniqueSelector(el) {
 }
 
 //////////////////////////////////////////////////////
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "scanAccessibility") {
     scanAccessibility(sendResponse);
-    return true; 
+    return true;
   }
 
   if (request.action === "highlightIssue") {

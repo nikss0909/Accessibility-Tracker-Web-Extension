@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./popup.css";
+import jsPDF from "jspdf";
 
 function Popup() {
 
@@ -114,45 +115,85 @@ function Popup() {
   };
 
   /* Download accessibility report */
-  const downloadReport = () => {
+const downloadReport = () => {
 
-    if (!issues.length) return;
+  if (!issues.length) return;
 
-    let report = "Accessibility Audit Report\n\n";
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 
-    report += `Accessibility Score: ${score}/10\n\n`;
+    const url = new URL(tabs[0].url).hostname;
 
+    const doc = new jsPDF();
+    let y = 10;
+
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor(0, 102, 204);
+    doc.text("Accessibility Audit Report", 10, y);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+
+    // Website + Score
+    doc.setFontSize(12);
+    doc.text(`Website: ${url}`, 10, y);
+    y += 8;
+
+    doc.text(`Accessibility Score: ${score}/10`, 10, y);
+    y += 10;
+
+    // Loop issues
     issues.forEach((issue, index) => {
 
-      report += `Issue ${index + 1}\n`;
-      report += `Rule: ${issue.rule}\n`;
-      report += `Severity: ${issue.severity}\n`;
-      report += `Message: ${issue.message}\n`;
+      // Page break
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
 
+      doc.setFontSize(12);
+      doc.text(`Issue ${index + 1}`, 10, y);
+      y += 6;
+
+      doc.setFontSize(11);
+      doc.text(`Rule: ${issue.rule}`, 10, y);
+      y += 6;
+
+      // Severity color
+      if (issue.severity === "High") doc.setTextColor(255, 0, 0);
+      else if (issue.severity === "Medium") doc.setTextColor(255, 165, 0);
+      else doc.setTextColor(0, 128, 0);
+
+      doc.text(`Severity: ${issue.severity}`, 10, y);
+      doc.setTextColor(0, 0, 0);
+      y += 6;
+
+      doc.text(`Message: ${issue.message}`, 10, y);
+      y += 6;
+
+      // ✅ Suggestion (IMPORTANT)
       if (issue.suggestion) {
-        report += `Suggestion: ${issue.suggestion}\n`;
+        doc.text(`Suggestion: ${issue.suggestion}`, 10, y);
+        y += 6;
       }
 
       if (issue.count > 1) {
-        report += `Occurrences: ${issue.count}\n`;
+        doc.text(`Occurrences: ${issue.count}`, 10, y);
+        y += 6;
       }
 
-      report += "\n----------------------\n\n";
+      // Divider
+      doc.setDrawColor(200);
+      doc.line(10, y, 200, y);
+      y += 6;
 
     });
 
-    const blob = new Blob([report], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+    // Save PDF
+    doc.save("Accessibility_Report.pdf");
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "accessibility-report.txt";
-    a.click();
+  });
 
-    URL.revokeObjectURL(url);
-
-  };
-
+};
   return (
     <div className="app">
 
