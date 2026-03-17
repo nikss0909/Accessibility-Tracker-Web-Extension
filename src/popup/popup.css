@@ -126,10 +126,7 @@ body {
   text-align: center;
   font-size: 13px;
 }
-
-/* =========================
-   ISSUES LIST
-========================= */
+/*  ISSUES LIST */
 .issues-list {
   display: flex;
   flex-direction: column;
@@ -186,4 +183,19 @@ body {
 .count {
   opacity: 0.6;
   font-size: 12px;
+}
+.report-btn {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  background: #4caf50;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.report-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

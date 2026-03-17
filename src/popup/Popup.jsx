@@ -73,13 +73,11 @@ function Popup() {
 
           if (chrome.runtime.lastError) {
 
-            /* Inject content script if missing */
             chrome.scripting.executeScript({
               target: { tabId: tabId },
               files: ["content.js"]
             }, () => {
 
-              /* Retry scan */
               chrome.tabs.sendMessage(
                 tabId,
                 { action: "scanAccessibility" },
@@ -115,10 +113,49 @@ function Popup() {
 
   };
 
+  /* Download accessibility report */
+  const downloadReport = () => {
+
+    if (!issues.length) return;
+
+    let report = "Accessibility Audit Report\n\n";
+
+    report += `Accessibility Score: ${score}/10\n\n`;
+
+    issues.forEach((issue, index) => {
+
+      report += `Issue ${index + 1}\n`;
+      report += `Rule: ${issue.rule}\n`;
+      report += `Severity: ${issue.severity}\n`;
+      report += `Message: ${issue.message}\n`;
+
+      if (issue.suggestion) {
+        report += `Suggestion: ${issue.suggestion}\n`;
+      }
+
+      if (issue.count > 1) {
+        report += `Occurrences: ${issue.count}\n`;
+      }
+
+      report += "\n----------------------\n\n";
+
+    });
+
+    const blob = new Blob([report], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "accessibility-report.txt";
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+  };
+
   return (
     <div className="app">
 
-      {/* HEADER */}
       <header className="header">
         <div>
           <h1>Accessibility Tracker</h1>
@@ -130,12 +167,14 @@ function Popup() {
         </button>
       </header>
 
-      {/* SCAN BUTTON */}
       <button className="scan-btn" onClick={scanPage} disabled={loading}>
         {loading ? "Scanning..." : "Scan Page"}
       </button>
 
-      {/* RESULTS */}
+      <button className="report-btn" onClick={downloadReport} disabled={!issues.length}>
+        Download Report
+      </button>
+
       {scanned && (
 
         <section className="results">
@@ -174,8 +213,13 @@ function Popup() {
                       {" "}({issue.count} occurrences)
                     </span>
                   )}
-
                 </p>
+
+                {issue.suggestion && (
+                  <p className="suggestion">
+                    💡 Fix: {issue.suggestion}
+                  </p>
+                )}
 
               </div>
 
