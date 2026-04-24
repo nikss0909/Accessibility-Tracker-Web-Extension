@@ -1,22 +1,17 @@
-import express from "express";
-import cors from "cors";
+import app from "./src/app.js";
+import { connectDatabase } from "./src/config/database.js";
+import { env } from "./src/config/env.js";
+import { logger } from "./src/utils/logger.js";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+async function startServer() {
+  await connectDatabase();
 
-app.post("/api/report", (req, res) => {
-  console.log("📥 Accessibility Report Received:");
-  console.log(req.body);
+  app.listen(env.port, () => {
+    logger.info("api_started", { port: env.port });
+  });
+}
 
-  // Later you can:
-  // - save to DB
-  // - send email
-  // - create GitHub issue
-
-  res.status(200).json({ message: "Report received" });
-});
-
-app.listen(5000, () => {
-  console.log("🚀 Backend running on http://localhost:5000");
+startServer().catch((error) => {
+  logger.error("api_start_failed", { message: error.message, stack: error.stack });
+  process.exit(1);
 });

@@ -7,12 +7,20 @@ export default defineConfig({
 
   plugins: [react()],
 
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.{js,jsx}"],
+    exclude: ["accessibility-backend/**", "node_modules/**", "dist/**"]
+  },
+
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    modulePreload: false,
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "popup.html")
+        popup: resolve(__dirname, "popup.html"),
+        dashboard: resolve(__dirname, "dashboard.html")
       }
     }
   }
