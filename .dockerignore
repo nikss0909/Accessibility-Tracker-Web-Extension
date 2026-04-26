@@ -1,8 +1,5 @@
 node_modules
 dist
-accessibility-backend/node_modules
-accessibility-backend/.env
-accessibility-backend/.env.*
 .git
 .github
 npm-debug.log

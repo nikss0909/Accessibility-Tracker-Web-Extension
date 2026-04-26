@@ -1,46 +1,26 @@
-# Production Readiness
+# Production Notes
 
-## Configuration
-
-- Frontend builds with `npm run build` into `dist/`.
-- Backend reads configuration from environment variables.
-- Use `accessibility-backend/.env.production.example` as the deployment template.
-- Set `JWT_SECRET` from a secret manager. Do not commit real secrets.
-- Set `CORS_ORIGIN` to the deployed dashboard domain and Chrome extension origin.
-- Set `TRUST_PROXY=true` only behind a trusted reverse proxy or load balancer.
-
-## Security
-
-- Helmet security headers are enabled.
-- JSON body size is limited through `JSON_LIMIT`.
-- Rate limiting is controlled by `RATE_LIMIT_WINDOW_MS` and `RATE_LIMIT_MAX`.
-- JWT auth protects product APIs.
-- Role-based access controls are applied to team, project, issue, scan, and report mutations.
-- MongoDB should run with authentication enabled in hosted or production environments.
-
-## Logging
-
-- Backend logs are structured JSON with request IDs.
-- Error responses include `requestId` so production logs can be correlated with support reports.
-- Stack traces are hidden when `NODE_ENV=production`.
-
-## Docker
-
-Run the full stack locally:
+## Build
 
 ```bash
-docker compose up --build
+npm ci
+npm run lint
+npm run test
+npm run build
 ```
 
-Services:
+Load the generated `dist/` folder as an unpacked Chrome extension for final verification.
 
-- Dashboard: `http://localhost:8080`
-- API: `http://localhost:5000`
-- MongoDB: `localhost:27017`
+## Extension Checks
 
-## CI
+- Confirm the popup opens quickly and remains compact.
+- Confirm the options page saves language, voice, theme, text size, and toolbar startup preference.
+- Confirm the floating toolbar appears on normal webpages, can be moved, collapsed, and closed.
+- Confirm read aloud, text size, contrast, dyslexia, keyboard, focus, and translate controls work on several websites.
+- Confirm all popup and settings controls are keyboard reachable and have visible focus outlines.
 
-GitHub Actions runs:
+## Privacy
 
-- frontend install, lint, tests, audit, build
-- backend install, lint, tests, audit, Docker build
+Inclusive Web Assistant stores preferences locally through `chrome.storage.local`.
+
+Translation opens the current page through Google Translate in a new tab. No custom backend is used by the current extension.

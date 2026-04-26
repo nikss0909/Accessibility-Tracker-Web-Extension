@@ -1,128 +1,96 @@
 import { useEffect, useMemo, useState } from "react";
 import "./popup.css";
-import jsPDF from "jspdf";
 
-const HISTORY_KEY = "accessibilityScanHistory";
-const MAX_HISTORY = 20;
+const SETTINGS_KEY = "inclusiveWebAssistantSettings";
+const extensionApi = typeof chrome !== "undefined" ? chrome : null;
+
+const defaultSettings = {
+  theme: "dark",
+  preferredLanguage: "en",
+  preferredVoice: "",
+  defaultTextSize: 100,
+  toolbarAutoStart: true
+};
+
+const languages = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Spanish" },
+  { code: "fr", label: "French" },
+  { code: "de", label: "German" },
+  { code: "hi", label: "Hindi" },
+  { code: "zh-CN", label: "Chinese" },
+  { code: "ar", label: "Arabic" },
+  { code: "ja", label: "Japanese" }
+];
 
 function Popup() {
-  const [issues, setIssues] = useState([]);
-  const [scanMeta, setScanMeta] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [scanned, setScanned] = useState(false);
-  const [theme, setTheme] = useState("dark");
-  const [score, setScore] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [monitoring, setMonitoring] = useState(false);
-  const [exportFormat, setExportFormat] = useState("pdf");
+  const [settings, setSettings] = useState(defaultSettings);
+  const [pageState, setPageState] = useState({
+    reading: false,
+    paused: false,
+    textSize: 100,
+    contrast: "off",
+    dyslexia: false,
+    keyboard: false,
+    focus: false,
+    toolbarVisible: true
+  });
+  const [status, setStatus] = useState("Ready");
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) setTheme(savedTheme);
-
-    chrome.storage?.local?.get([HISTORY_KEY], (result) => {
-      setHistory(result?.[HISTORY_KEY] || []);
+    extensionApi?.storage?.local?.get([SETTINGS_KEY], (result) => {
+      const nextSettings = { ...defaultSettings, ...(result?.[SETTINGS_KEY] || {}) };
+      setSettings(nextSettings);
+      document.body.setAttribute("data-theme", nextSettings.theme);
+      sendToActiveTab({ action: "applySettings", settings: nextSettings }, syncState);
     });
   }, []);
 
   useEffect(() => {
-    document.body.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+    document.body.setAttribute("data-theme", settings.theme);
+  }, [settings.theme]);
 
-  const summary = useMemo(() => {
-    return {
-      critical: issues.filter((issue) => issue.severity === "Critical").length,
-      high: issues.filter((issue) => issue.severity === "High").length,
-      medium: issues.filter((issue) => issue.severity === "Medium").length,
-      low: issues.filter((issue) => issue.severity === "Low").length
-    };
-  }, [issues]);
+  const selectedLanguage = useMemo(
+    () => languages.find((language) => language.code === settings.preferredLanguage)?.label || "English",
+    [settings.preferredLanguage]
+  );
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
-
-  const calculateScore = (issueList) => {
-    const penalty = issueList.reduce((total, issue) => {
-      if (issue.severity === "Critical") return total + 3;
-      if (issue.severity === "High") return total + 2;
-      if (issue.severity === "Medium") return total + 1;
-      return total + 0.5;
-    }, 0);
-
-    return Math.max(10 - penalty, 0).toFixed(1);
-  };
-
-  const handleResponse = (response) => {
-    setLoading(false);
-
-    const finalIssues = response?.issues || [];
-    const finalScore = response?.score || calculateScore(finalIssues);
-    const meta = {
-      scannedAt: response?.scannedAt || new Date().toISOString(),
-      url: response?.url || "",
-      title: response?.title || "",
-      durationMs: response?.durationMs || 0
-    };
-
-    setIssues(finalIssues);
-    setScore(finalScore);
-    setScanMeta(meta);
-    saveHistory(finalIssues, finalScore, meta);
-  };
-
-  const saveHistory = (issueList, finalScore, meta) => {
-    const item = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-      scannedAt: meta.scannedAt,
-      url: meta.url,
-      title: meta.title,
-      score: finalScore,
-      total: issueList.length,
-      critical: issueList.filter((issue) => issue.severity === "Critical").length,
-      high: issueList.filter((issue) => issue.severity === "High").length,
-      medium: issueList.filter((issue) => issue.severity === "Medium").length,
-      low: issueList.filter((issue) => issue.severity === "Low").length
-    };
-
-    const nextHistory = [item, ...history].slice(0, MAX_HISTORY);
-    setHistory(nextHistory);
-    chrome.storage?.local?.set({ [HISTORY_KEY]: nextHistory });
+  const updateSettings = (patch) => {
+    const nextSettings = { ...settings, ...patch };
+    setSettings(nextSettings);
+    extensionApi?.storage?.local?.set({ [SETTINGS_KEY]: nextSettings });
+    sendToActiveTab({ action: "applySettings", settings: nextSettings }, syncState);
   };
 
   const withActiveTab = (callback) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs?.[0]?.id) return;
+    if (!extensionApi?.tabs) {
+      setStatus("Load as an extension to control a webpage");
+      return;
+    }
+    extensionApi.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs?.[0]?.id) {
+        setStatus("Open a webpage first");
+        return;
+      }
       callback(tabs[0]);
     });
   };
 
   const sendToActiveTab = (message, callback) => {
     withActiveTab((tab) => {
-      chrome.tabs.sendMessage(tab.id, message, (response) => {
-        if (chrome.runtime.lastError) {
-          chrome.scripting.executeScript(
-            {
-              target: { tabId: tab.id },
-              files: ["content.js"]
-            },
-            () => {
-              if (chrome.runtime.lastError) {
-                callback?.(null);
-                return;
-              }
-
-              chrome.tabs.sendMessage(tab.id, message, (retryResponse) => {
-                if (chrome.runtime.lastError) {
-                  callback?.(null);
-                  return;
-                }
-
-                callback?.(retryResponse);
-              });
+      extensionApi.tabs.sendMessage(tab.id, message, (response) => {
+        if (extensionApi.runtime.lastError) {
+          extensionApi.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] }, () => {
+            if (extensionApi.runtime.lastError) {
+              setStatus("This page cannot be changed");
+              callback?.(null);
+              return;
             }
-          );
+
+            extensionApi.tabs.sendMessage(tab.id, message, (retryResponse) => {
+              callback?.(extensionApi.runtime.lastError ? null : retryResponse);
+            });
+          });
           return;
         }
 
@@ -131,303 +99,115 @@ function Popup() {
     });
   };
 
-  const scanPage = () => {
-    setLoading(true);
-    setScanned(true);
-    sendToActiveTab({ action: "scanAccessibility" }, handleResponse);
+  const syncState = (response) => {
+    if (!response) return;
+    if (response.state) setPageState(response.state);
+    if (response.message) setStatus(response.message);
   };
 
-  const highlightIssue = (issue) => {
-    sendToActiveTab({
-      action: "highlightIssue",
-      selector: issue.selector,
-      ruleKey: issue.ruleKey
+  const command = (action, extra = {}) => {
+    sendToActiveTab({ action, ...extra }, syncState);
+  };
+
+  const openSettings = () => {
+    extensionApi?.runtime?.openOptionsPage?.();
+  };
+
+  const translatePage = () => {
+    sendToActiveTab({ action: "translatePage", language: settings.preferredLanguage }, (response) => {
+      syncState(response);
+      if (response?.translateUrl) extensionApi?.tabs?.create({ url: response.translateUrl });
     });
   };
 
-  const autoFixIssue = (issue) => {
-    sendToActiveTab(
-      {
-        action: "autoFixIssue",
-        selector: issue.selector,
-        ruleKey: issue.ruleKey
-      },
-      (response) => {
-        if (response?.fixed) scanPage();
-      }
-    );
-  };
-
-  const toggleMonitoring = () => {
-    const action = monitoring ? "stopRealtimeMonitoring" : "startRealtimeMonitoring";
-    sendToActiveTab({ action }, (response) => {
-      setMonitoring(Boolean(response?.monitoring));
-    });
-  };
-
-  const openDashboard = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
-  };
-
-  const buildReport = () => ({
-    generatedAt: new Date().toISOString(),
-    score,
-    summary,
-    page: scanMeta,
-    issues
-  });
-
-  const downloadBlob = (content, type, filename) => {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    chrome.downloads.download({ url, filename, saveAs: true }, () => {
-      URL.revokeObjectURL(url);
-    });
-  };
-
-  const exportJson = () => {
-    downloadBlob(
-      JSON.stringify(buildReport(), null, 2),
-      "application/json",
-      "accessibility-report.json"
-    );
-  };
-
-  const exportCsv = () => {
-    const header = [
-      "Severity",
-      "Rule",
-      "Issue",
-      "Selector",
-      "Simple explanation",
-      "Disabled user impact",
-      "Corrected HTML",
-      "Contrast colors",
-      "Semantic replacement",
-      "Best practice"
-    ];
-    const rows = issues.map((issue) => [
-      issue.severity,
-      issue.rule,
-      issue.name || issue.message,
-      issue.selector,
-      issue.simpleExplanation || issue.why,
-      issue.disabilityImpact || issue.why,
-      issue.correctedHtml || issue.codeFix,
-      issue.contrastColors ? `${issue.contrastColors.text} on ${issue.contrastColors.background}` : "",
-      issue.semanticReplacement || "",
-      issue.bestPractice
-    ]);
-
-    const csv = [header, ...rows]
-      .map((row) => row.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    downloadBlob(csv, "text/csv", "accessibility-report.csv");
-  };
-
-  const exportPdf = () => {
-    if (!issues.length) return;
-
-    const doc = new jsPDF();
-    let y = 12;
-
-    doc.setFontSize(16);
-    doc.setTextColor(0, 102, 204);
-    doc.text("Accessibility Audit Report", 10, y);
-    doc.setTextColor(0, 0, 0);
-    y += 10;
-
-    doc.setFontSize(11);
-    doc.text(`Page: ${scanMeta?.title || scanMeta?.url || "Current page"}`, 10, y);
-    y += 7;
-    doc.text(`Score: ${score}/10`, 10, y);
-    y += 7;
-    doc.text(`Issues: ${issues.length} (Critical ${summary.critical}, High ${summary.high}, Medium ${summary.medium}, Low ${summary.low})`, 10, y);
-    y += 10;
-
-    issues.forEach((issue, index) => {
-      if (y > 265) {
-        doc.addPage();
-        y = 12;
-      }
-
-      doc.setFontSize(12);
-      doc.text(`${index + 1}. ${issue.name || issue.message}`, 10, y);
-      y += 6;
-
-      doc.setFontSize(10);
-      doc.text(`Severity: ${issue.severity} | Rule: ${issue.rule}`, 10, y);
-      y += 5;
-      doc.text(`Selector: ${issue.selector}`, 10, y, { maxWidth: 185 });
-      y += 8;
-      doc.text(`Why: ${issue.why || "Review against WCAG guidance."}`, 10, y, { maxWidth: 185 });
-      y += 10;
-      doc.text(`Impact: ${issue.disabilityImpact || issue.why || ""}`, 10, y, { maxWidth: 185 });
-      y += 10;
-      doc.text(`Fix: ${issue.correctedHtml || issue.codeFix || issue.suggestion || ""}`, 10, y, { maxWidth: 185 });
-      y += 12;
-
-      doc.setDrawColor(210);
-      doc.line(10, y, 200, y);
-      y += 6;
-    });
-
-    doc.save("accessibility-report.pdf");
-  };
-
-  const downloadReport = () => {
-    if (!issues.length) return;
-    if (exportFormat === "csv") exportCsv();
-    else if (exportFormat === "json") exportJson();
-    else exportPdf();
-  };
-
-  const sendReportToBackend = async () => {
-    if (!issues.length) return;
-
-    try {
-      await fetch("http://localhost:5000/api/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildReport())
-      });
-    } catch (error) {
-      console.warn("Accessibility Tracker backend is unavailable", error);
-    }
-  };
+  const themeLabel = settings.theme === "dark" ? "Light" : "Dark";
 
   return (
-    <div className="app">
-      <header className="header">
+    <main className="app" aria-label="Inclusive Web Assistant">
+      <header className="top">
         <div>
-          <h1>Accessibility Tracker</h1>
-          <p>WCAG quick audit for current page</p>
+          <span className="mark" aria-hidden="true">IWA</span>
+          <h1>Inclusive Web Assistant</h1>
+          <p>Comfort tools for the page you are browsing.</p>
         </div>
-
-        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
-          {theme === "dark" ? "Light" : "Dark"}
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => updateSettings({ theme: settings.theme === "dark" ? "light" : "dark" })}
+          aria-label={`Switch to ${themeLabel.toLowerCase()} theme`}
+          title={`Switch to ${themeLabel} theme`}
+        >
+          {themeLabel}
         </button>
       </header>
 
-      <button className="scan-btn" onClick={scanPage} disabled={loading}>
-        {loading ? "Scanning..." : "Scan Page"}
-      </button>
-
-      <div className="report-row">
-        <select
-          className="format-select"
-          value={exportFormat}
-          onChange={(event) => setExportFormat(event.target.value)}
-          aria-label="Report format"
-        >
-          <option value="pdf">PDF</option>
-          <option value="csv">CSV</option>
-          <option value="json">JSON</option>
-        </select>
-
-        <button className="report-btn" onClick={downloadReport} disabled={!issues.length}>
-          Export Report
-        </button>
-      </div>
-
-      <div className="utility-row">
-        <label className="monitor-toggle">
-          <input type="checkbox" checked={monitoring} onChange={toggleMonitoring} />
-          Realtime monitoring
-        </label>
-
-        <div className="utility-actions">
-          <button className="sync-btn" onClick={openDashboard}>
-            Dashboard
-          </button>
-          <button className="sync-btn" onClick={sendReportToBackend} disabled={!issues.length}>
-            Send
-          </button>
+      <section className="reader-card" aria-label="Read page aloud">
+        <div>
+          <span className="eyebrow">Read aloud</span>
+          <strong>{pageState.reading ? (pageState.paused ? "Paused" : "Reading") : "Ready"}</strong>
         </div>
-      </div>
+        <div className="reader-actions">
+          <button type="button" onClick={() => command("startRead")} aria-label="Start reading page">Start</button>
+          <button type="button" onClick={() => command(pageState.paused ? "resumeRead" : "pauseRead")} disabled={!pageState.reading}>
+            {pageState.paused ? "Resume" : "Pause"}
+          </button>
+          <button type="button" onClick={() => command("stopRead")} disabled={!pageState.reading}>Stop</button>
+        </div>
+      </section>
 
-      {scanned && (
-        <section className="results">
-          <h2>Issues Found</h2>
+      <section className="tool-grid" aria-label="Page comfort tools">
+        <button type="button" onClick={() => command("changeTextSize", { delta: 10 })}>
+          <span>A+</span>
+          Larger text
+        </button>
+        <button type="button" onClick={() => command("changeTextSize", { delta: -10 })}>
+          <span>A-</span>
+          Smaller text
+        </button>
+        <button type="button" onClick={() => command("resetTextSize")}>
+          <span>{pageState.textSize}%</span>
+          Reset size
+        </button>
+        <button className={pageState.contrast === "dark" ? "active" : ""} type="button" onClick={() => command("setContrast", { mode: pageState.contrast === "dark" ? "off" : "dark" })}>
+          <span>Dark</span>
+          Contrast
+        </button>
+        <button className={pageState.contrast === "light" ? "active" : ""} type="button" onClick={() => command("setContrast", { mode: pageState.contrast === "light" ? "off" : "light" })}>
+          <span>Light</span>
+          Contrast
+        </button>
+        <button className={pageState.dyslexia ? "active" : ""} type="button" onClick={() => command("toggleDyslexia")}>
+          <span>Readable</span>
+          Dyslexia
+        </button>
+        <button className={pageState.keyboard ? "active" : ""} type="button" onClick={() => command("toggleKeyboard")}>
+          <span>Tab</span>
+          Keyboard
+        </button>
+        <button className={pageState.focus ? "active" : ""} type="button" onClick={() => command("toggleFocus")}>
+          <span>Focus</span>
+          Less clutter
+        </button>
+      </section>
 
-          {score !== null && (
-            <div className="score">
-              Accessibility Score: <strong>{score}/10</strong>
-            </div>
-          )}
+      <section className="translate-card" aria-label="Translate page">
+        <label>
+          Translate to
+          <select value={settings.preferredLanguage} onChange={(event) => updateSettings({ preferredLanguage: event.target.value })}>
+            {languages.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={translatePage}>Translate</button>
+      </section>
 
-          {!loading && issues.length > 0 && (
-            <div className="summary-strip">
-              <span>Critical {summary.critical}</span>
-              <span>High {summary.high}</span>
-              <span>Medium {summary.medium}</span>
-              <span>Low {summary.low}</span>
-            </div>
-          )}
-
-          {!loading && issues.length === 0 && (
-            <div className="empty">No issues detected</div>
-          )}
-
-          <div className="issues-list">
-            {issues.map((issue) => (
-              <article key={issue.id || `${issue.rule}-${issue.selector}`} className="issue-card">
-                <button
-                  className="issue-main"
-                  type="button"
-                  onClick={() => highlightIssue(issue)}
-                >
-                  <span className={`badge ${issue.severity.toLowerCase()}`}>
-                    {issue.severity}
-                  </span>
-
-                  <p>
-                    <strong>{issue.rule}</strong> - {issue.name || issue.message}
-                  </p>
-
-                  <span className="selector">{issue.selector}</span>
-                </button>
-
-                <details className="issue-details">
-                  <summary>AI suggestions</summary>
-                  <p><strong>Simple:</strong> {issue.simpleExplanation || issue.message}</p>
-                  <p><strong>Impact:</strong> {issue.disabilityImpact || issue.why}</p>
-                  <p><strong>HTML:</strong> <code>{issue.correctedHtml || issue.codeFix || issue.suggestion}</code></p>
-                  {issue.contrastColors && (
-                    <p>
-                      <strong>Colors:</strong>{" "}
-                      <code>{issue.contrastColors.text}</code> text on{" "}
-                      <code>{issue.contrastColors.background}</code> background
-                    </p>
-                  )}
-                  <p><strong>Semantic:</strong> {issue.semanticReplacement || issue.bestPractice}</p>
-                  <p><strong>Tip:</strong> {issue.bestPractice}</p>
-                  {issue.autoFixable && (
-                    <button className="autofix-btn" type="button" onClick={() => autoFixIssue(issue)}>
-                      Auto-fix
-                    </button>
-                  )}
-                </details>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {history.length > 0 && (
-        <section className="history">
-          <h2>Recent Scans</h2>
-          {history.slice(0, 3).map((item) => (
-            <div className="history-item" key={item.id}>
-              <span>{new Date(item.scannedAt).toLocaleDateString()}</span>
-              <strong>{item.score}/10</strong>
-              <span>{item.total} issues</span>
-            </div>
-          ))}
-        </section>
-      )}
-    </div>
+      <footer className="footer-actions">
+        <button type="button" onClick={() => command("toggleToolbar")}>
+          {pageState.toolbarVisible ? "Hide toolbar" : "Show toolbar"}
+        </button>
+        <button type="button" onClick={openSettings}>Settings</button>
+        <span aria-live="polite">{status} · {selectedLanguage}</span>
+      </footer>
+    </main>
   );
 }
 

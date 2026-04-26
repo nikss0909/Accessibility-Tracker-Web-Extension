@@ -3,14 +3,14 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 export default defineConfig({
-  base: "./",   // ✅ ADD THIS LINE
+  base: "./",
 
   plugins: [react()],
 
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{js,jsx}"],
-    exclude: ["accessibility-backend/**", "node_modules/**", "dist/**"]
+    exclude: ["node_modules/**", "dist/**"]
   },
 
   build: {
@@ -20,7 +20,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, "popup.html"),
-        dashboard: resolve(__dirname, "dashboard.html")
+        options: resolve(__dirname, "options.html")
       }
     }
   }

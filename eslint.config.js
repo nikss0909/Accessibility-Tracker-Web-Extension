@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "accessibility-backend/**"]
+    ignores: ["dist/**", "node_modules/**"]
   },
   js.configs.recommended,
   {

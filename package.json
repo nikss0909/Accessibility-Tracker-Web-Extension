@@ -1,5 +1,5 @@
 {
-  "name": "accessibility-extension",
+  "name": "inclusive-web-assistant",
   "version": "1.0.0",
   "type": "module",
   "private": true,
@@ -12,8 +12,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "framer-motion": "^10.16.4",
-    "jspdf": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
